@@ -69,8 +69,10 @@ mlflow ui
 ```
 
 ## 👥 Équipe
-- [Votre nom]
-- [Autres membres si groupe]
+- [Ala dine Belrezgia]
+- [Houcem Eddine kamkoum]
+- [Mohamed Yassine Ben Said]
+- [Chaima Ben Safta]
 
 ## 📅 Timeline
 - Semaine 1: Setup & Exploration
