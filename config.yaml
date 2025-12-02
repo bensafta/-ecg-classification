@@ -1,0 +1,54 @@
+project:
+  name: "ECG Classification"
+  version: "1.0.0"
+  description: "Détection automatique de maladies cardiovasculaires à partir d'images ECG"
+
+data:
+  raw_path: "data/raw"
+  processed_path: "data/processed"
+  splits_path: "data/splits"
+  image_size: [224, 224]
+  num_classes: 5
+  classes:
+    - "Normal"
+    - "Myocardial Infarction"
+    - "Abnormal Heartbeat"
+    - "History of MI"
+    - "Other"
+
+split:
+  train: 0.70
+  val: 0.15
+  test: 0.15
+  random_seed: 42
+
+model:
+  architecture: "resnet50"
+  pretrained: true
+  freeze_backbone: false
+  dropout: 0.5
+
+training:
+  batch_size: 32
+  epochs: 50
+  learning_rate: 0.001
+  optimizer: "adam"
+  loss_function: "cross_entropy"
+  early_stopping_patience: 10
+
+augmentation:
+  enabled: true
+  rotation_range: 15
+  zoom_range: 0.1
+  horizontal_flip: true
+  vertical_flip: false
+
+mlflow:
+  experiment_name: "ECG_Classification"
+  tracking_uri: "file:./mlruns"
+  artifact_location: "./mlartifacts"
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  reload: true
