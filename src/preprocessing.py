@@ -1,67 +1,96 @@
+# -------------------------
+# preprocessing.py
+# -------------------------
 import os
-import cv2
 import numpy as np
+from PIL import Image
 
-# --- Définition des chemins ---
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))       # racine du projet
-RAW_DIR = os.path.join(BASE_DIR, "data", "raw")             # data/raw
-PROCESSED_DIR = os.path.join(BASE_DIR, "data", "processed") # data/processed
+# -------------------------
+# Définition des chemins
+# -------------------------
 
-print("RAW_DIR =", RAW_DIR)
-print("PROCESSED_DIR =", PROCESSED_DIR)
+# le chemin du fichier Python actuel processing
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+#C’est là que se trouvent les images originales (non traitées).
+RAW_DIR = os.path.join(BASE_DIR, "data", "raw")
+#les données prêtes pour l’entraînement du modèle.
+PROCESSED_DIR = os.path.join(BASE_DIR, "data", "processed")
 
-# Assurer que processed existe
+# Créer le dossier processed s'il n'existe pas 
 os.makedirs(PROCESSED_DIR, exist_ok=True)
 
-# --- Paramètres du dataset ---
-IMG_SIZE = 128
+# -------------------------
+# Paramètres
+# -------------------------
+IMAGE_SIZE = 224 #Compatibilité avec les modèles pré-entraînés(EfficientNet,VGG16,ResNet),
+#Temps d’entraînement raisonnable  pas besoin d’ultra haute résolution puisque dans 
+#notre projet formes , les pices et la les variations de rythme)
 
+# Classes utilisées deux categories normal et anormal 
+categories = {
+    "Normal": 0,
+    "Abnormal_heartbeat": 1
+}
+#contient toutes les images ECG prétraitées, stockées dans un tableau NumPy
 images = []
+#labels.npy contient la classe associée à chaque image.
 labels = []
 
-label_map = {}   # ex: {"Normal": 0, "Abnormal": 1}
-current_label = 0
+# -------------------------
+# Début du preprocessing
+# -------------------------
+print("Début du preprocessing (Normal / Abnormal_heartbeat)...")
 
-# --- Lecture des classes (Normal / Abnormal) ---
-for category in os.listdir(RAW_DIR):
+for category, label_value in categories.items():
     category_path = os.path.join(RAW_DIR, category)
 
     if not os.path.isdir(category_path):
+        print(f"ATTENTION : {category_path} n'est pas un dossier.")
         continue
-
-    print(f"Processing category: {category_path}")
-
-    # enregistrer nom->numéro
-    label_map[category] = current_label
-    label_value = current_label
-    current_label += 1
-
-    # --- Lecture des images ---
+#Affiche une information pour savoir quelle catégorie est en cours de traitement.
+#Utile pour déboguer et suivre la progression du preprocessing.
+    print(f"Traitement de la catégorie : {category} -> label {label_value}")
+#Parcourt tous les fichiers dans le dossier de la catégorie
     for img_name in os.listdir(category_path):
         img_path = os.path.join(category_path, img_name)
 
-        # lire image
-        img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-        if img is None:
-            print(f"WARNING: cannot read {img_path}")
-            continue
+        try:
+            # ouvrir en niveau de gris
+            #convertit en niveau de gris (1 canal au lieu de 3RBG).
+             # car ECG = signal monochrome → inutile de garder 3 canaux couleur.
+             # pour Réduit la mémoire et simplifie l’apprentissage.
+            img = Image.open(img_path).convert("L")
+            # redimensionner les image en 224*224
+            img = img.resize((IMAGE_SIZE, IMAGE_SIZE))
+            # normalisation(Convertit l’image en tableau NumPy avec des valeurs entre 0 et 1
+            #pour stabilise l'apprentissage)
+            img_array = np.array(img) / 255.0
+           #liste contenant tous les tableaux d’images.
+            images.append(img_array)
+           # liste contenant le label numérique correspondant.
+            labels.append(label_value)
 
-        # resize
-        img = cv2.resize(img, (IMG_SIZE, IMG_SIZE))
+        except Exception as e:
+            print(f"Erreur lecture image {img_name} : {e}")
 
-        images.append(img)
-        labels.append(label_value)
-
-# convertir en arrays
-images = np.array(images).reshape(-1, IMG_SIZE, IMG_SIZE, 1)
+# -------------------------
+# Conversion en numpy arrays
+# -------------------------
+#reshape images.shape → (N, 224, 224, 1): Les CNN attendent souvent des tableaux 4D : (batch, height, width, channels)
+images = np.array(images).reshape(-1, IMAGE_SIZE, IMAGE_SIZE, 1)
 labels = np.array(labels)
 
-# --- Sauvegarde ---
+# -------------------------
+# Sauvegarde
+# -------------------------
 np.save(os.path.join(PROCESSED_DIR, "images.npy"), images)
 np.save(os.path.join(PROCESSED_DIR, "labels.npy"), labels)
-np.save(os.path.join(PROCESSED_DIR, "label_map.npy"), label_map)
+np.save(os.path.join(PROCESSED_DIR, "label_map.npy"), categories)
 
+# -------------------------
+# Fin
+# -------------------------
 print("Preprocessing terminé ✔")
-print("Images:", images.shape)
-print("Labels:", labels.shape)
-print("Label map:", label_map)
+print("Images :", images.shape)
+print("Labels :", labels.shape)
+print("Label map :", categories)
