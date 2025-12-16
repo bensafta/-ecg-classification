@@ -10,6 +10,7 @@ import mlflow.pytorch
 # -----------------------------
 IMAGE_SIZE = 224  # à adapter selon ton modèle
 RUN_ID_VGG16 = "3e6251aeb5f24635a5d3241bef702fbd"
+RUN_ID_EFFICIENTNET = "placeholder_run_id"  # TODO: Replace with actual MLflow run ID for EfficientNet
 
 MODEL_PATHS = {
     "VGG16": f"mlruns/0/{RUN_ID_VGG16}/artifacts/vgg16_model/pytorch_model.bin",
@@ -34,9 +35,8 @@ uploaded_file = st.file_uploader("Upload une image ECG", type=["png", "jpg", "jp
 def preprocess_image(image: Image.Image):
     transform = transforms.Compose([
         transforms.Resize((IMAGE_SIZE, IMAGE_SIZE)),
-        transforms.Grayscale(num_output_channels=1),
         transforms.ToTensor(),
-        transforms.Normalize([0.5], [0.5])
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
     return transform(image).unsqueeze(0)  # ajouter batch dim
 
@@ -78,8 +78,8 @@ if uploaded_file is not None:
 # -----------------------------
 if st.button("Log modèle dans MLflow"):
     model = load_model(model_name)
-    example_input = torch.randn(1, 1, IMAGE_SIZE, IMAGE_SIZE)
-    
+    example_input = torch.randn(1, 3, IMAGE_SIZE, IMAGE_SIZE)
+
     with mlflow.start_run() as run:
         mlflow.pytorch.log_model(
             pytorch_model=model,

@@ -1,0 +1,52 @@
+version: "3.8"
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    container_name: ecg_api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../data:/app/data
+      - ../models:/app/models
+    environment:
+      - MLFLOW_TRACKING_URI=http://mlflow:5000
+    networks:
+      - ecg_network
+    restart: unless-stopped
+
+  streamlit:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.streamlit
+    container_name: ecg_streamlit
+    ports:
+      - "8501:8501"
+    depends_on:
+      - api
+    networks:
+      - ecg_network
+    restart: unless-stopped
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.9.0
+    container_name: ecg_mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ../mlruns:/mlflow/mlruns
+    command: >
+      mlflow server
+      --backend-store-uri file:///mlflow/mlruns
+      --default-artifact-root file:///mlflow/mlruns
+      --host 0.0.0.0
+      --port 5000
+    networks:
+      - ecg_network
+    restart: unless-stopped
+
+networks:
+  ecg_network:
+    driver: bridge
