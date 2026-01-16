@@ -1,0 +1,11 @@
+numpy
+matplotlib
+scikit-learn
+pandas
+torch
+torchvision
+mlflow
+streamlit
+fastapi
+uvicorn
+pytest
