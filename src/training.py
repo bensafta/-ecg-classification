@@ -1,52 +1,47 @@
+# training.py
 import os
-import numpy as np
-import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Conv2D, MaxPooling2D, Flatten, Dense, Dropout
+from nbconvert import NotebookExporter
+from nbclient import NotebookClient
+from nbformat import read, write, NO_CONVERT
 
-# --- Définition des chemins ---
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))       # racine projet
-PROCESSED_DIR = os.path.join(BASE_DIR, "data", "processed") # data/processed
 
-print("Loading dataset from:", PROCESSED_DIR)
+# -------------------------
+# Chemins des notebooks
+# -------------------------
+SRC = [
+    "src/train/train_CNN.ipynb",
+    "src/train/train_EfficientNet.ipynb",
+    "src/train/train_ResNet.ipynb",
+    "src/train/train_VGG16.ipynb"
+   
+]
 
-# --- Charger données ---
-images = np.load(os.path.join(PROCESSED_DIR, "images.npy"))
-labels = np.load(os.path.join(PROCESSED_DIR, "labels.npy"))
+# -------------------------
+# Fonction pour exécuter un notebook
+# -------------------------
+def run_notebook(nb_path):
+    print(f"\n=== Lancement du src : {nb_path} ===")
+    
+    # Ouvrir le notebook
+    with open(nb_path, "r", encoding="utf-8") as f:
+        nb = read(f, as_version=4)
+    
+    # Créer le client pour exécuter les cellules
+    client = NotebookClient(nb, timeout=3600, kernel_name="python3")
+    client.execute()
+    
+    # Optionnel : sauvegarder le notebook exécuté
+    executed_path = nb_path.replace(".ipynb", "_executed.ipynb")
+    with open(executed_path, "w", encoding="utf-8") as f:
+        write(nb, f)
+    
+    print(f"✅ Notebook terminé et sauvegardé : {executed_path}")
 
-# normalisation
-images = images / 255.0
-
-# --- Construction modèle CNN ---
-model = Sequential([
-    Conv2D(32, (3, 3), activation="relu", input_shape=(128, 128, 1)),
-    MaxPooling2D((2, 2)),
-
-    Conv2D(64, (3, 3), activation="relu"),
-    MaxPooling2D((2, 2)),
-
-    Flatten(),
-    Dense(128, activation="relu"),
-    Dropout(0.3),
-    Dense(1, activation="sigmoid")  # binaire: Normal / Abnormal
-])
-
-model.compile(optimizer="adam",
-              loss="binary_crossentropy",
-              metrics=["accuracy"])
-
-# --- Entraînement ---
-history = model.fit(
-    images, labels,
-    batch_size=32,
-    epochs=10,
-    validation_split=0.2
-)
-
-# --- Sauvegarde du modèle ---
-MODEL_DIR = os.path.join(BASE_DIR, "models")
-os.makedirs(MODEL_DIR, exist_ok=True)
-
-model.save(os.path.join(MODEL_DIR, "ecg_model.h5"))
-
-print("Training terminé ✔")
+# -------------------------
+# Boucle sur tous les notebooks
+# -------------------------
+for nb_file in SRC:
+    if os.path.exists(nb_file):
+        run_notebook(nb_file)
+    else:
+        print(f"❌ Notebook introuvable : {nb_file}")
